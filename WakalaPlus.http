@@ -1,0 +1,6 @@
+@WakalaPlus_HostAddress = http://localhost:5217
+
+GET {{WakalaPlus_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
