@@ -1,5 +1,5 @@
 ﻿namespace WakalaPlus.Models
-{
+{ 
     public class AgentLocationSync
     {
         public string status { get; set; }

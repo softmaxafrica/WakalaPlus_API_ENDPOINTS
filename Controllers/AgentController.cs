@@ -18,6 +18,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using static System.Runtime.InteropServices.JavaScript.JSType;
+using YourApiNamespace.Controllers;
 
 namespace WakalaPlus.Controllers
 {
@@ -37,6 +38,80 @@ namespace WakalaPlus.Controllers
             //_tokenService = tokenService;
 
             // _loggedInUser = Functions.GetCurrentUserDetails(_context);
+        }
+        #endregion
+
+        #region GetAllRequests
+        [HttpGet]
+        [Route("GetAllRequests")]
+        public IActionResult GetAllRequests()
+        {
+            string functionName = "GetAllRequests";
+            var executionResult = new ExecutionResult();
+            var sysDate = Functions.GetCurrentDateTime();
+
+            try
+            {
+                using (var db = new AppDbContext(_config))
+                {
+                    // Fetch all customer tickets
+                    var tickets = db.CustomerTickets.ToList();
+
+                    if (tickets == null || !tickets.Any())
+                    {
+                        executionResult.SetBadRequestError("No Tickets Found");
+                        return StatusCode(executionResult.GetStatusCode(), executionResult.GetServerResponse().Message);
+                    }
+
+                    // Return success response
+                    executionResult.SetDataList(tickets);
+                    executionResult.SetGeneralInfo(className, functionName, "SUCCESS");
+                    return Ok(executionResult.GetServerResponse());
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle and log the exception
+                executionResult.SetInternalServerError(className, functionName, ex);
+                return StatusCode(executionResult.GetStatusCode(), executionResult.GetServerResponse().Message);
+            }
+        }
+        #endregion
+
+        #region GetAllGeneralTranslations
+        [HttpGet]
+        [Route("GetAllGeneralTranslations")]
+        public IActionResult GetAllGeneralTranslations()
+        {
+            string functionName = "GetAllGeneralTranslations";
+            var executionResult = new ExecutionResult();
+            var sysDate = Functions.GetCurrentDateTime();
+
+            try
+            {
+                using (var db = new AppDbContext(_config))
+                {
+                    // Fetch all translations
+                    var translations = db.GeneralTranslations.ToList();
+
+                    if (translations == null || !translations.Any())
+                    {
+                        executionResult.SetBadRequestError("No Translations Found");
+                        return StatusCode(executionResult.GetStatusCode(), executionResult.GetServerResponse().Message);
+                    }
+
+                    // Return success response
+                    executionResult.SetDataList(translations);
+                    executionResult.SetGeneralInfo(className, functionName, "SUCCESS");
+                    return Ok(executionResult.GetServerResponse());
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle and log the exception
+                executionResult.SetInternalServerError(className, functionName, ex);
+                return StatusCode(executionResult.GetStatusCode(), executionResult.GetServerResponse().Message);
+            }
         }
         #endregion
 
@@ -72,6 +147,8 @@ namespace WakalaPlus.Controllers
 
 
         #endregion
+
+
         #region doRetrieve OpenTicket
         internal static ExecutionResult DoGetOPenTicket(AppDbContext db, string agentCode)
         {
@@ -95,8 +172,7 @@ namespace WakalaPlus.Controllers
         }
 
         #endregion
-
-
+        
         #region checkAgentStatus
          [AllowAnonymous]
         [HttpGet]
@@ -149,7 +225,7 @@ namespace WakalaPlus.Controllers
         #endregion
 
         #endregion
-
+        
         #region AgentRegistration
         [HttpPost]
         [Route("registeragent")]
@@ -706,20 +782,20 @@ namespace WakalaPlus.Controllers
             }
         }
         #endregion
-        #region  Respond To Customer Tickets
+        #region   UpdateTicketStatusToAttended Tickets
         [HttpPut]
-        [Route("AttendCustTicket")]
-        public IActionResult AttendCustTicket(PreparedCustomerTicket ticketData)
+        [Route("UpdateTicketStatusToAttended")]
+        public IActionResult UpdateTicketStatusToAttended(PreparedCustomerTicket ticketData)
         {
-            string functionName = "AttendCustTicket";
+            string functionName = "UpdateTicketStatusToAttended";
             var executionResult = new ExecutionResult();
             try
             {
                 using (var db = new AppDbContext(_config))
                 using (var trans = db.Database.BeginTransaction())
                 {
-                    executionResult = DoRespondToTicket(db, ticketData);
-                    if (executionResult.GetSuccess() == false)
+                    executionResult = DoUpdateTicketStatusToAttended(db, ticketData);
+                    if(executionResult.GetSuccess() == false)
                     {
                         return StatusCode(executionResult.GetStatusCode(), executionResult.GetServerResponse().Message);
                     }
@@ -738,39 +814,30 @@ namespace WakalaPlus.Controllers
 
         #endregion
 
-        #region DoRespondToTicket
-        internal static ExecutionResult DoRespondToTicket(AppDbContext db,PreparedCustomerTicket PticketData)
+        #region UpdateTicketStatusToAttended Tickets
+        internal static ExecutionResult DoUpdateTicketStatusToAttended(AppDbContext db,PreparedCustomerTicket ticketData)
         {
-            string functionName = "DoRespondToTicket";
+            string functionName = "DoUpdateTicketStatusToAttended";
             var executionResult = new ExecutionResult();
             var sysDate = Functions.GetCurrentDateTime();
             try
             {
 
-                CustomerTickets ticketData = new CustomerTickets();
-                //ticketData = PticketData;
+          
 
-                ticketData.phoneNumber = PticketData.phoneNumber;
-                ticketData.agentCode = PticketData.agentCode;
-                ticketData.serviceRequested = PticketData.serviceRequested;
-                ticketData.network = PticketData.network;
-
-
-                var response = db.CustomerTickets.FirstOrDefault(x => x.agentCode == ticketData.agentCode && x.phoneNumber == ticketData.phoneNumber && x.serviceRequested==ticketData.serviceRequested && x.network ==ticketData.network);
+                var response = db.CustomerTickets.FirstOrDefault(x => x.agentCode == ticketData.agentCode && x.phoneNumber == ticketData.phoneNumber && x.serviceRequested==ticketData.serviceRequested && x.network ==ticketData.network && x.transactionId== ticketData.transactionId);
                 if (response.Equals(null))
                 {
-                    executionResult.SetBadRequestError("Kwa Sasa Hakuna Maombi Mapya Ya Huduma");
+                    executionResult.SetBadRequestError("Tiketi Hii Haijapatikana");
                     return executionResult;
                 }
                 else
                 {
-
-                    response.ticketLastResponseDateTime = sysDate;
-                    response.ticketStatus = "ASSIGNED";
+                    response.ticketLastResponseDateTime = ticketData.LastResponseDateTime;
+                    response.ticketStatus = "ATTENDED";
                     response.agentCode = ticketData.agentCode;
                     response.agentLatitude = ticketData.agentLatitude;
                     response.agentLongitude=ticketData.agentLongitude;
-
 
                     db.Attach(response);
 
@@ -788,10 +855,56 @@ namespace WakalaPlus.Controllers
         }
         #endregion
 
+        #region CancelRequest
+        [HttpPut]
+        [Route("CancellRequest")]
+        public IActionResult CancellRequest([FromBody] string ticketId)
+        {
+            string functionName = "CancellRequest";
+            var executionResult = new ExecutionResult();
+            var sysDate = Functions.GetCurrentDateTime();
+
+            try
+            {
+                using (var db = new AppDbContext(_config))
+                using (var trans = db.Database.BeginTransaction())
+                {
+                    // Fetch the ticket by transaction ID
+                    var ticket = db.CustomerTickets.FirstOrDefault(x => x.transactionId == ticketId);
+                    if (ticket == null)
+                    {
+                        executionResult.SetBadRequestError("No Ticket Found");
+                        return StatusCode(executionResult.GetStatusCode(), executionResult.GetServerResponse().Message);
+                    }
+
+                    // Update ticket status and last response date
+                    ticket.ticketLastResponseDateTime = sysDate;
+                    ticket.ticketStatus = "CANCELLED";
+
+                    db.Attach(ticket);
+                    db.SaveChanges();
+                    trans.Commit();
+
+                    // Return success response
+                    executionResult.SetData(ticket);
+                    executionResult.SetGeneralInfo(className, functionName, "SUCCESS");
+                    return Ok(executionResult.GetServerResponse());
+                }
+            }
+            catch (Exception ex)
+            {
+                executionResult.SetInternalServerError(className, functionName, ex);
+                return StatusCode(executionResult.GetStatusCode(), executionResult.GetServerResponse().Message);
+            }
+        }
+        #endregion
+
+
+
 
         #region Retrieve Ticket History
 
-       [AllowAnonymous]
+        [AllowAnonymous]
        [HttpGet]
        [Route("GetTicketHistory/{agentCode}")]
         public IActionResult GetTicketHistory(string agentCode)
@@ -831,7 +944,7 @@ namespace WakalaPlus.Controllers
             {
                 var TicketHistory = db.CustomerTickets
                     .Where(a => a.agentCode == agentCode &&
-                                (a.ticketStatus == "AT" || a.ticketStatus == "ATTENDED" || a.ticketStatus == "ASSIGNED"))
+                                (a.ticketStatus == "AT" || a.ticketStatus == "ATTENDED" || a.ticketStatus == "ASSIGNED" || a.ticketStatus == "CANCELLED"))
                     .OrderByDescending(a => a.transactionId)
                     .ToList();
                 
@@ -909,6 +1022,40 @@ namespace WakalaPlus.Controllers
             {
                 executionResult.SetInternalServerError(className, functionName, ex);
                 return executionResult;
+            }
+        }
+
+        #endregion
+        #region Delete All Transactions
+
+        [HttpDelete("DeleteAllTransactions")]
+        public async Task<IActionResult> DeleteAllTransactions(AppDbContext db)
+        {
+            var executionResult = new ExecutionResult();
+            try
+            {
+                // Get all the device connections from the database
+                var tickets = db.CustomerTickets.ToList();
+
+                if (tickets.Any())
+                {
+                    // Remove all the tickets
+                    db.CustomerTickets.RemoveRange(tickets);
+                    await db.SaveChangesAsync();
+
+                    executionResult.SetGeneralInfo(nameof(AgentController), nameof(DeleteAllTransactions), "All Transactions deleted successfully");
+                }
+                else
+                {
+                    executionResult.SetGeneralInfo(nameof(AgentController), nameof(DeleteAllTransactions), "No Transaction found to delete");
+                }
+
+                return Ok(executionResult.GetServerResponse());
+            }
+            catch (Exception ex)
+            {
+                executionResult.SetInternalServerError(nameof(AgentController), nameof(DeleteAllTransactions), ex);
+                return StatusCode((int)HttpStatusCode.InternalServerError, executionResult.GetServerResponse());
             }
         }
 

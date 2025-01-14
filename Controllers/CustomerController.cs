@@ -11,15 +11,7 @@ using BCrypt.Net;
 using Microsoft.AspNetCore.Authorization;
 using System.Net;
 using System.Data;
-using NuGet.Protocol;
-using Microsoft.AspNetCore.Identity;
- using System;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using Microsoft.AspNetCore.HttpOverrides;
-using MySqlX.XDevAPI.Common;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
+ 
 using Microsoft.AspNetCore.SignalR;
 
 using WakalaPlus.Hubs;
@@ -38,44 +30,47 @@ namespace WakalaPlus.Controllers
 
         private readonly IHubContext<SignalHub> _hubContext;
         private static string className = "CustomerController";
-
+        private readonly AppDbContext _context =new AppDbContext(_config);
         private static IConfiguration _config;
         private static string _transactionId;
 
         #region constructor
-        public CustomerController(IHubContext<SignalHub> hubContext, IConfiguration config)
+        public CustomerController( IConfiguration config)
         {
             _config = config;
-            _hubContext = hubContext;
+             //_hubContext = hubContext;
         }
         #endregion
-        #region GetAllAgents
+      
+
+
+        #region Retrieve All Agents
+
         [HttpGet]
 
         [Route("GetAllAgents")]
-        public ActionResult<List<Agent>> GetAllAgents()
+        public IActionResult GetAllAgents()
         {
-            using (var db = new AppDbContext(_config))
+            var executionResult = new ExecutionResult();
 
-                try
-                {
-                    var Agents = db.Agents.ToList();
-                    if (Agents.Any())
-                    {
-                        return Ok(Agents); //Http 200 Ok
-                    }
-                    else
-                    {
-                        return NotFound("No Agent Found"); //HttpClient 404 NOT FOUND
-                    }
-                }
-                catch (Exception ex)
-                {
-                    return StatusCode(500, "Internal Server Error");
-                }
+            try
+            {
+                var AllAgents = _context.Agents.ToList();
+                executionResult.SetDataList(AllAgents);
+                executionResult.SetTotalCount(AllAgents.Count);
+                executionResult.SetGeneralInfo(nameof(CustomerController), nameof(GetAllAgents), "Data retrieved successfully");
 
-
+                return Ok(executionResult.GetServerResponse());
+            }
+            catch (Exception ex)
+            {
+                executionResult.SetInternalServerError(nameof(CustomerController), nameof(GetAllAgents), ex);
+                return StatusCode((int)HttpStatusCode.InternalServerError, executionResult.GetServerResponse());
+            }
         }
+ 
+
+
         #endregion
 
         #region retrieveOnline Agents
@@ -91,7 +86,6 @@ namespace WakalaPlus.Controllers
             {
                 using (var db = new AppDbContext(_config))
                 {
-
                     executionResult = DoGetOnlineAgents(db, network, serviceRequested);
                     if (executionResult.GetSuccess() == false)
                     {
@@ -138,7 +132,7 @@ namespace WakalaPlus.Controllers
         #region InsertCustomerTicket
         [HttpPost]
         [Route("CreateCustomerTicket")]
-        public IActionResult CreateCustomerTicket([FromBody] PreparedCustomerTicket ticket)
+        public IActionResult CreateCustomerTicket(PreparedCustomerTicket ticket)
         {
 
             string functionName = "CreateCustomerTicket";
@@ -193,7 +187,7 @@ namespace WakalaPlus.Controllers
                 ticketData.agentCode = ticket.agentCode;
                 ticketData.agentLatitude = ticket.agentLatitude;
                 ticketData.agentLongitude = ticket.agentLongitude;
-                ticketData.ticketStatus = "OPEN";
+                ticketData.ticketStatus = "ASSIGNED";
                 ticketData.ticketCreationDateTime = (DateTime)ticket.createdDate;
                 ticketData.ticketLastResponseDateTime = (DateTime)ticket.LastResponseDateTime;
                 ticketData.phoneNumber = ticket.phoneNumber;
@@ -222,7 +216,7 @@ namespace WakalaPlus.Controllers
         [Route("PushMessage/{message}")]
         public IActionResult PushMessage(string message)
         {
-            _hubContext.Clients.All.SendAsync("ReceiveMessage", message);
+            //_hubContext.Clients.All.SendAsync("ReceiveMessage", message);
             return Ok("Done");
         }
 

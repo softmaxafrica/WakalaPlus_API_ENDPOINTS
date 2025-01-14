@@ -2,14 +2,16 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
+	  <AspNetCoreHostingModel>OutOfProcess</AspNetCoreHostingModel>
+	  <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <InvariantGlobalization>true</InvariantGlobalization>
     <UserSecretsId>02c8e3c8-5b8d-4613-86c1-1647d740c0d6</UserSecretsId>
     <Platforms>AnyCPU;ARM64</Platforms>
   </PropertyGroup>
+ 
 
-  <ItemGroup>
+	<ItemGroup>
     <PackageReference Include="BCrypt.Net-Core" Version="1.6.0" />
     <PackageReference Include="GSF.Core" Version="2.4.28" />
     <PackageReference Include="JWT" Version="10.1.1" />
