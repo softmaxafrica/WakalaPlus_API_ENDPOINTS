@@ -215,22 +215,28 @@ namespace WakalaPlus.Hubs
             return null;
         }
 
-
-        public async Task SyncLocationData(string agentCode, string status, double latitude, double longitude)
+        public async Task SyncLocationData(AgentLocationSync agentLocation)
         {
             try
             {
-                // Create an instance of the location object
-                var agentLocation = new AgentLocationSync
+                      // Call the service to update the agent location
+                var updatedAgent = await _agentController.UpdateAgentLocationAndSendBackToCustomers(agentLocation);
+                // Check if the update was successful
+                if (updatedAgent != null)
                 {
-                    agentCode = agentCode,
-                    status = status,
-                    latitude = latitude,
-                    longitude = longitude
-                };
-            
-                _agentController.SyncLiveAgentLocation(agentLocation);
-
+                    // Notify all clients about the updated agent
+                    await Clients.All.SendAsync("ReceiveLocationUpdate", new
+                    {
+                        agentCode = updatedAgent.agentCode,
+                        latitude = updatedAgent.latitude,
+                        longitude = updatedAgent.longitude,
+                        status = updatedAgent.status
+                    });
+                }
+                else
+                {
+                    Console.WriteLine("Failed to update agent or agent not found.");
+                }
             }
             catch (Exception ex)
             {

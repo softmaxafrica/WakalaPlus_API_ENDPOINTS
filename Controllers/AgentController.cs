@@ -782,6 +782,47 @@ namespace WakalaPlus.Controllers
             }
         }
         #endregion
+
+        #region UpdateAgentLocationAndSendBackToCustomers
+        [HttpGet]
+        [Route("UpdateAgentLocationAndSendBackToCustomers/{agentCode}")]
+        public async Task<OnlineOfflineAgent?> UpdateAgentLocationAndSendBackToCustomers(AgentLocationSync location)
+        {
+            try
+            {
+                using (var db = new AppDbContext(_config))
+                {
+                    // Retrieve the agent record based on the agentCode
+                    var agent = await db.OnlineOfflineAgent
+                    .FirstOrDefaultAsync(a => a.agentCode == location.agentCode);
+                    if (agent != null)
+                    {
+                        // Update agent's location details
+                        agent.latitude = location.latitude;
+                        agent.longitude = location.longitude;
+                        agent.status = location.status ?? "ONLINE";  // Default to "ONLINE"
+
+                        // Save changes to the database
+                        await db.SaveChangesAsync();
+
+                        // Return updated agent details
+                        return agent;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Agent not found.");
+                        return null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in SyncAgentLocationAsync: {ex.Message}");
+                return null;
+            }
+        }
+
+        #endregion
         #region   UpdateTicketStatusToAttended Tickets
         [HttpPut]
         [Route("UpdateTicketStatusToAttended")]
