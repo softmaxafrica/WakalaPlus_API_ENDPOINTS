@@ -219,19 +219,20 @@ namespace WakalaPlus.Hubs
         {
             try
             {
-                      // Call the service to update the agent location
-                var updatedAgent = await _agentController.UpdateAgentLocationAndSendBackToCustomers(agentLocation);
+                AgentLocationSync locationUpd = new AgentLocationSync
+                {
+                    agentCode = agentLocation.agentCode,
+                    latitude = agentLocation.latitude,
+                    longitude = agentLocation.longitude,
+                    status = agentLocation.status
+                };
+                // Call the service to update the agent location
+                var updatedAgent = await _agentController.UpdateAgentLocationAndSendBackToCustomers(locationUpd);
                 // Check if the update was successful
                 if (updatedAgent != null)
                 {
                     // Notify all clients about the updated agent
-                    await Clients.All.SendAsync("ReceiveLocationUpdate", new
-                    {
-                        agentCode = updatedAgent.agentCode,
-                        latitude = updatedAgent.latitude,
-                        longitude = updatedAgent.longitude,
-                        status = updatedAgent.status
-                    });
+                    await Clients.All.SendAsync("ReceiveLocationUpdate", updatedAgent);
                 }
                 else
                 {
@@ -241,6 +242,38 @@ namespace WakalaPlus.Hubs
             catch (Exception ex)
             {
                 Console.WriteLine($"Error updating agent location: {ex.Message}");
+            }
+        }
+
+        public async Task SendCompletedRequest(PreparedCustomerTicket ticket)
+        {
+            try
+            {
+                // Fetch agent and customer device details in one query
+                var deviceDetails = await _dbContext.DeviceDetails
+                    .Where(d => d.deviceId == ticket.agentCode || d.deviceId == ticket.phoneNumber)
+                    .ToListAsync();
+
+                // Get connection IDs
+                var agentConnectionId = deviceDetails.FirstOrDefault(d => d.deviceId == ticket.agentCode)?.connectionId;
+                var customerConnectionId = deviceDetails.FirstOrDefault(d => d.deviceId == ticket.phoneNumber)?.connectionId;
+
+                // Validate connection IDs
+                if (!string.IsNullOrEmpty(agentConnectionId))
+                {
+                    await Clients.Client(agentConnectionId).SendAsync("ReceiveCompletedTicket", ticket);
+                }
+
+                if (!string.IsNullOrEmpty(customerConnectionId))
+                {
+                    await Clients.Client(customerConnectionId).SendAsync("ReceiveCompletedTicket", ticket);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception (replace with your logging mechanism)
+                Console.Error.WriteLine($"Error in SendCompletedRequest: {ex.Message}");
+                throw; // Optionally rethrow to propagate the error
             }
         }
 

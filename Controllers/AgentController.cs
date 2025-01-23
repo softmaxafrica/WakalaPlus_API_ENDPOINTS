@@ -386,17 +386,17 @@ namespace WakalaPlus.Controllers
                 };
 
                 // Retrieve service group name and network name
-                var serviceName = db.GeneralTranslations
-                                    .Where(x => x.code == agentRegRequest.serviceGroupCode)
-                                    .Select(x => x.value)
-                                    .FirstOrDefault();
-                var networkName = db.GeneralTranslations
-                                    .Where(y => y.code == agentRegRequest.networksOperating)
-                                    .Select(x => x.value)
-                                    .FirstOrDefault();
+                //var serviceName = db.GeneralTranslations
+                //                    .Where(x => x.code == agentRegRequest.serviceGroupCode)
+                //                    .Select(x => x.value)
+                //                    .FirstOrDefault();
+                //var networkName = db.GeneralTranslations
+                //                    .Where(y => y.code == agentRegRequest.networksOperating)
+                //                    .Select(x => x.value)
+                //                    .FirstOrDefault();
 
-                agentRegRequest.serviceGroupCode = serviceName;
-                agentRegRequest.networksOperating = networkName;
+                //agentRegRequest.serviceGroupCode = serviceName;
+                //agentRegRequest.networksOperating = networkName;
 
                 // Add the agent to the Agents table
                 db.Agents.Add(agentRegRequest);
@@ -784,8 +784,8 @@ namespace WakalaPlus.Controllers
         #endregion
 
         #region UpdateAgentLocationAndSendBackToCustomers
-        [HttpGet]
-        [Route("UpdateAgentLocationAndSendBackToCustomers/{agentCode}")]
+        [HttpPost]
+        [Route("UpdateAgentLocationAndSendBackToCustomers")]
         public async Task<OnlineOfflineAgent?> UpdateAgentLocationAndSendBackToCustomers(AgentLocationSync location)
         {
             try
@@ -801,7 +801,7 @@ namespace WakalaPlus.Controllers
                         agent.latitude = location.latitude;
                         agent.longitude = location.longitude;
                         agent.status = location.status ?? "ONLINE";  // Default to "ONLINE"
-
+                        agent.lastUpdate = DateTime.Now.ToLocalTime();
                         // Save changes to the database
                         await db.SaveChangesAsync();
 

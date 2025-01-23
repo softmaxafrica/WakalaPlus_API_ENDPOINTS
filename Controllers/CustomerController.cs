@@ -381,7 +381,12 @@ namespace WakalaPlus.Controllers
             try
             {
                 Customer CustomerRegRequest = new Customer();
+
                 CustomerRegRequest.customerId = data.customerId;
+                CustomerRegRequest.FullName= data.FullName;
+                CustomerRegRequest.RegDate = System.DateTime.Now.ToLocalTime();
+                CustomerRegRequest.Nida= data.Nida;
+
 
                 db.Customers.Add(CustomerRegRequest);
                 db.SaveChanges();
