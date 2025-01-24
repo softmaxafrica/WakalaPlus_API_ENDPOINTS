@@ -25,7 +25,9 @@ namespace WakalaPlus.Shared
     }
     public class ExecutionResult
     {
-        private ServerResponse _serverResponse;
+        public ServerResponse _serverResponse;
+        public bool IsSuccess { get; private set; }
+        public string Message { get; private set; }
 
         public ExecutionResult()
         {
@@ -177,5 +179,12 @@ namespace WakalaPlus.Shared
         {
             return this._serverResponse.DataList;
         }
+
+        public void SetSuccess(string message)
+        {
+            this.IsSuccess = true;
+            this.Message = message;
+        }
+
     }
 }

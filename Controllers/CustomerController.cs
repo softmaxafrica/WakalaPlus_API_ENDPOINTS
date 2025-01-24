@@ -19,6 +19,7 @@ using MySqlX.XDevAPI;
 using Mysqlx;
 using Microsoft.DotNet.Scaffolding.Shared.Messaging;
 using Mysqlx.Expr;
+using YourApiNamespace.Controllers;
 
 
 namespace WakalaPlus.Controllers
@@ -127,6 +128,47 @@ namespace WakalaPlus.Controllers
                 return executionResult;
             }
         }
+
+        #endregion
+
+
+        #region CheckAgentsToSendTicket
+        [HttpGet]
+
+        [Route("CheckForAvailableAgents")]
+        public ExecutionResult CheckForAvailableAgents(string serviceRequested, string network)
+        {
+            string functionName = "CheckForAvailableAgents";
+            var executionResult = new ExecutionResult();
+
+            try
+            {
+                // Fetch only online agents matching the requested service and network
+                List<OnlineOfflineAgent> onlineAgents = _context.OnlineOfflineAgent
+                    .Where(a => a.status == "ONLINE" &&
+                                a.serviceGroupCode.Contains(serviceRequested) &&
+                                a.networksOperating.Contains(network))
+                    .ToList();
+
+                // If no online agents are found, return a meaningful message
+                if (onlineAgents == null || onlineAgents.Count == 0)
+                {
+                    executionResult.SetGeneralInfo(nameof(CustomerController), functionName,
+                        "No online agents available for the requested service and network.");
+                    return executionResult;
+                }
+
+                // Successfully found agents
+                executionResult.SetSuccess($"Found {onlineAgents.Count} online agents available.");
+                return executionResult;
+            }
+            catch (Exception ex)
+            {
+                executionResult.SetInternalServerError(nameof(CustomerController), functionName, ex);
+                return executionResult;
+            }
+        }
+
 
         #endregion
         #region InsertCustomerTicket
@@ -351,6 +393,7 @@ namespace WakalaPlus.Controllers
                 using (var db = new AppDbContext(_config))
                 using (var trans = db.Database.BeginTransaction())
                 {
+
                     executionResult = DoInsertCustomer(db, data);
                     if (!executionResult.GetSuccess())
                     {
@@ -386,6 +429,9 @@ namespace WakalaPlus.Controllers
                 CustomerRegRequest.FullName= data.FullName;
                 CustomerRegRequest.RegDate = System.DateTime.Now.ToLocalTime();
                 CustomerRegRequest.Nida= data.Nida;
+                CustomerRegRequest.latitude = data.latitude;
+                CustomerRegRequest.longitude = data.longitude;
+
 
 
                 db.Customers.Add(CustomerRegRequest);
@@ -575,6 +621,39 @@ namespace WakalaPlus.Controllers
         }
         #endregion
 
+        #region Delete All Customers
 
+        [HttpDelete("DeleteAllCustomers")]
+        public async Task<IActionResult> DeleteAllCustomers()
+        {
+            var executionResult = new ExecutionResult();
+            try
+            {
+                // Get all the device connections from the database
+                var customers = _context.Customers.ToList();
+
+                if (customers.Any())
+                {
+                    // Remove all the devices
+                    _context.Customers.RemoveRange(customers);
+                    await _context.SaveChangesAsync();
+
+                    executionResult.SetGeneralInfo(nameof(CustomerController), nameof(DeleteAllCustomers), "All Customers deleted successfully");
+                }
+                else
+                {
+                    executionResult.SetGeneralInfo(nameof(CustomerController), nameof(DeleteAllCustomers), "No device connections found to delete");
+                }
+
+                return Ok(executionResult.GetServerResponse());
+            }
+            catch (Exception ex)
+            {
+                executionResult.SetInternalServerError(nameof(CustomerController), nameof(DeleteAllCustomers), ex);
+                return StatusCode((int)HttpStatusCode.InternalServerError, executionResult.GetServerResponse());
+            }
+        }
+
+        #endregion
     }
 }

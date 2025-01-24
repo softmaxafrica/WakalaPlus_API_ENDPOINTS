@@ -96,35 +96,80 @@ namespace WakalaPlus.Hubs
             await Clients.All.SendAsync("ReceiveMessage", message);
         }
 
+        //public async Task SendTicketToAgents(PreparedCustomerTicket ticket)
+        //{
+        //    try
+        //    {
+        //        if (string.IsNullOrEmpty(ticket.agentCode))
+        //        {
+        //            // If no specific agent to exclude, send to all other connected clients
+        //            await Clients.Others.SendAsync("ReceiveTicket", ticket);
+        //        }
+        //        else
+        //        {
+        //            // Get the connection ID of the agent to exclude
+        //            string agentConnectionId = await GetConnectionIdByPhoneNumber(ticket.agentCode);
+
+        //            if (!string.IsNullOrEmpty(agentConnectionId))
+        //            {
+        //                // Exclude the specific agent's connection ID
+        //                await Clients.AllExcept(agentConnectionId).SendAsync("ReceiveTicket", ticket);
+        //            }
+        //            else
+        //            {
+        //                // Handle the case where the connection ID for the agent was not found
+        //                await Clients.Others.SendAsync("ReceiveTicket", ticket);
+        //            }
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        // Log the exception for debugging purposes
+        //        Console.WriteLine($"Error in SendTicketToAgents: {ex.Message}");
+        //    }
+        //}
+
         public async Task SendTicketToAgents(PreparedCustomerTicket ticket)
         {
             try
             {
                 if (string.IsNullOrEmpty(ticket.agentCode))
                 {
-                    // If no specific agent to exclude, send to all other connected clients
-                    await Clients.Others.SendAsync("ReceiveTicket", ticket);
+                    var onlineAgents = _dbContext.OnlineOfflineAgent
+                        .Where(a => a.status == "ONLINE" &&
+                                    a.serviceGroupCode.Contains(ticket.serviceRequested) &&
+                                    a.networksOperating.Contains(ticket.network))
+                        .ToList();
+
+                    if (onlineAgents.Any())
+                    {
+                        foreach (var agent in onlineAgents)
+                        {
+                            string agentConnectionId = await GetConnectionIdByPhoneNumber(agent.agentCode);
+                            await Clients.User(agentConnectionId).SendAsync("ReceiveTicket", ticket);
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("No online agents available to receive the ticket.");
+                    }
                 }
                 else
                 {
-                    // Get the connection ID of the agent to exclude
                     string agentConnectionId = await GetConnectionIdByPhoneNumber(ticket.agentCode);
 
                     if (!string.IsNullOrEmpty(agentConnectionId))
                     {
-                        // Exclude the specific agent's connection ID
                         await Clients.AllExcept(agentConnectionId).SendAsync("ReceiveTicket", ticket);
                     }
                     else
                     {
-                        // Handle the case where the connection ID for the agent was not found
                         await Clients.Others.SendAsync("ReceiveTicket", ticket);
                     }
                 }
             }
             catch (Exception ex)
             {
-                // Log the exception for debugging purposes
                 Console.WriteLine($"Error in SendTicketToAgents: {ex.Message}");
             }
         }
@@ -171,7 +216,6 @@ namespace WakalaPlus.Hubs
                     {
                         // Send the updated ticket to the customer using the connectionId
                         await Clients.Client(connectionId).SendAsync("ReceiveUpdatedTicket", ticket);
-
                         _customerController.CreateCustomerTicket(ticket);
                     }
                     else
